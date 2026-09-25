@@ -1,11 +1,10 @@
 module.exports = async function handler(req, res) {
-  // Extract path and query params (Vercel provides req.url relative to deployment)
   const urlPath = req.url || '/';
   const steamUrl = 'https://store.steampowered.com' + urlPath;
 
   try {
     const headers = {
-      'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
       'Accept-Language': req.headers['accept-language'] || 'en-US,en;q=0.9',
     };
 
@@ -32,12 +31,14 @@ module.exports = async function handler(req, res) {
 
     const contentType = response.headers.get('content-type') || '';
     const myDomain = `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}`;
+    const hostName = req.headers.host;
 
     if (response.status >= 300 && response.status < 400) {
-      const location = response.headers.get('location');
+      let location = response.headers.get('location');
       if (location) {
-        const newLocation = location.replace('https://store.steampowered.com', myDomain);
-        res.setHeader('Location', newLocation);
+        location = location.replace(/https?:\/\/store\.steampowered\.com/gi, myDomain);
+        location = location.replace(/store\.steampowered\.com/gi, hostName);
+        res.setHeader('Location', location);
         return res.status(response.status).end();
       }
     }
@@ -49,16 +50,22 @@ module.exports = async function handler(req, res) {
 
     if (contentType.includes('text/html')) {
       let html = await response.text();
-      html = html.replace(/https:\/\/store\.steampowered\.com/g, myDomain);
-      html = html.replace(/https:\\\/\\\/store\.steampowered\.com/g, myDomain.replace(/\//g, '\\/'));
+      html = html.replace(/https?:\/\/store\.steampowered\.com/gi, myDomain);
+      html = html.replace(/https?:\\\/\\\/store\.steampowered\.com/gi, myDomain.replace(/\//g, '\\/'));
+      html = html.replace(/store\.steampowered\.com/gi, hostName);
+      
+      // Attempt to neutralize top-level redirects
+      html = html.replace(/window\.top\.location/gi, "window.self.location");
+      
       res.setHeader('Content-Type', contentType);
       return res.status(response.status).send(html);
     } 
     
     if (contentType.includes('application/json')) {
         let text = await response.text();
-        text = text.replace(/https:\/\/store\.steampowered\.com/g, myDomain);
-        text = text.replace(/https:\\\/\\\/store\.steampowered\.com/g, myDomain.replace(/\//g, '\\/'));
+        text = text.replace(/https?:\/\/store\.steampowered\.com/gi, myDomain);
+        text = text.replace(/https?:\\\/\\\/store\.steampowered\.com/gi, myDomain.replace(/\//g, '\\/'));
+        text = text.replace(/store\.steampowered\.com/gi, hostName);
         res.setHeader('Content-Type', contentType);
         return res.status(response.status).send(text);
     }
