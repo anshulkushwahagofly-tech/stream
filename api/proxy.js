@@ -14,9 +14,23 @@ module.exports = async function handler(req, res) {
     targetDomain = 'https://steamcommunity.com';
   } else if (urlPath.startsWith('/en/') || urlPath.startsWith('/wizard/')) {
     targetDomain = 'https://help.steampowered.com';
+  } else if (urlPath.startsWith('/about') || urlPath.startsWith('/jobs')) {
+    targetDomain = 'https://www.valvesoftware.com';
+  } else if (urlPath.startsWith('/partner')) {
+    targetDomain = 'https://partner.steamgames.com';
   }
 
-  const steamUrl = targetDomain + urlPath;
+  // Handle case where path is just /partner (we mapped it from partner.steamgames.com)
+  let steamUrl = targetDomain + urlPath.replace('/partner', '');
+  
+  if (targetDomain === 'https://www.valvesoftware.com') {
+      steamUrl = targetDomain + urlPath; // valvesoftware paths map directly
+  }
+
+  // Normally steamUrl is just domain + path
+  if (targetDomain === 'https://store.steampowered.com' || targetDomain === 'https://steamcommunity.com' || targetDomain === 'https://help.steampowered.com') {
+      steamUrl = targetDomain + urlPath;
+  }
 
   try {
     const headers = {
@@ -52,10 +66,12 @@ module.exports = async function handler(req, res) {
     if (response.status >= 300 && response.status < 400) {
       let location = response.headers.get('location');
       if (location) {
-        // Rewrite all steam domains to our domain
         location = location.replace(/https?:\/\/store\.steampowered\.com/gi, myDomain);
         location = location.replace(/https?:\/\/steamcommunity\.com/gi, myDomain);
         location = location.replace(/https?:\/\/help\.steampowered\.com/gi, myDomain);
+        location = location.replace(/https?:\/\/www\.valvesoftware\.com/gi, myDomain);
+        location = location.replace(/https?:\/\/partner\.steamgames\.com/gi, myDomain + '/partner');
+        
         location = location.replace(/store\.steampowered\.com/gi, hostName);
         location = location.replace(/steamcommunity\.com/gi, hostName);
         res.setHeader('Location', location);
@@ -65,7 +81,6 @@ module.exports = async function handler(req, res) {
 
     const setCookie = response.headers.get('set-cookie');
     if (setCookie) {
-      // Strip domain from cookies so they apply to our domain
       let newCookie = setCookie.replace(/domain=\.steampowered\.com;/gi, '');
       newCookie = newCookie.replace(/domain=\.steamcommunity\.com;/gi, '');
       res.setHeader('Set-Cookie', newCookie); 
@@ -73,17 +88,18 @@ module.exports = async function handler(req, res) {
 
     if (contentType.includes('text/html')) {
       let html = await response.text();
-      // Aggressive replacement of all steam domains
+      
       html = html.replace(/https?:\/\/store\.steampowered\.com/gi, myDomain);
       html = html.replace(/https?:\/\/steamcommunity\.com/gi, myDomain);
       html = html.replace(/https?:\/\/help\.steampowered\.com/gi, myDomain);
+      html = html.replace(/https?:\/\/www\.valvesoftware\.com/gi, myDomain);
+      html = html.replace(/https?:\/\/valvesoftware\.com/gi, myDomain);
+      html = html.replace(/https?:\/\/partner\.steamgames\.com/gi, myDomain + '/partner');
       
-      // Also escaped versions
       html = html.replace(/https?:\\\/\\\/store\.steampowered\.com/gi, myDomain.replace(/\//g, '\\/'));
       html = html.replace(/https?:\\\/\\\/steamcommunity\.com/gi, myDomain.replace(/\//g, '\\/'));
       html = html.replace(/https?:\\\/\\\/help\.steampowered\.com/gi, myDomain.replace(/\//g, '\\/'));
       
-      // Direct hostnames
       html = html.replace(/store\.steampowered\.com/gi, hostName);
       html = html.replace(/steamcommunity\.com/gi, hostName);
       html = html.replace(/help\.steampowered\.com/gi, hostName);
@@ -98,6 +114,9 @@ module.exports = async function handler(req, res) {
         let text = await response.text();
         text = text.replace(/https?:\/\/store\.steampowered\.com/gi, myDomain);
         text = text.replace(/https?:\/\/steamcommunity\.com/gi, myDomain);
+        text = text.replace(/https?:\/\/help\.steampowered\.com/gi, myDomain);
+        text = text.replace(/https?:\/\/partner\.steamgames\.com/gi, myDomain + '/partner');
+        text = text.replace(/https?:\/\/www\.valvesoftware\.com/gi, myDomain);
         
         text = text.replace(/https?:\\\/\\\/store\.steampowered\.com/gi, myDomain.replace(/\//g, '\\/'));
         text = text.replace(/https?:\\\/\\\/steamcommunity\.com/gi, myDomain.replace(/\//g, '\\/'));
