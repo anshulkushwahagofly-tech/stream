@@ -1,14 +1,5 @@
 module.exports = async function handler(req, res) {
-  // Construct a URL object from req.url
-  const reqUrlObj = new URL(req.url, `http://${req.headers.host}`);
-  
-  // Extract the original path from the reqPath parameter injected by Vercel
-  let reqPath = reqUrlObj.searchParams.get('reqPath') || '';
-  
-  // Clean up our internal parameter before sending to Steam
-  reqUrlObj.searchParams.delete('reqPath');
-  
-  const urlPath = '/' + reqPath + reqUrlObj.search;
+  const urlPath = req.url || '/';
 
   // Determine target domain based on path
   let targetDomain = 'https://store.steampowered.com';
