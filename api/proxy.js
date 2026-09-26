@@ -1,6 +1,15 @@
 module.exports = async function handler(req, res) {
-  const urlPath = req.url || '/';
+  // Construct a URL object from req.url
+  const reqUrlObj = new URL(req.url, `http://${req.headers.host}`);
   
+  // Extract the original path from the reqPath parameter injected by Vercel
+  let reqPath = reqUrlObj.searchParams.get('reqPath') || '';
+  
+  // Clean up our internal parameter before sending to Steam
+  reqUrlObj.searchParams.delete('reqPath');
+  
+  const urlPath = '/' + reqPath + reqUrlObj.search;
+
   // Determine target domain based on path
   let targetDomain = 'https://store.steampowered.com';
   
@@ -22,12 +31,9 @@ module.exports = async function handler(req, res) {
 
   // Handle case where path is just /partner (we mapped it from partner.steamgames.com)
   let steamUrl = targetDomain + urlPath.replace('/partner', '');
-  
   if (targetDomain === 'https://www.valvesoftware.com') {
       steamUrl = targetDomain + urlPath; // valvesoftware paths map directly
   }
-
-  // Normally steamUrl is just domain + path
   if (targetDomain === 'https://store.steampowered.com' || targetDomain === 'https://steamcommunity.com' || targetDomain === 'https://help.steampowered.com') {
       steamUrl = targetDomain + urlPath;
   }
@@ -134,6 +140,6 @@ module.exports = async function handler(req, res) {
 
   } catch (error) {
     console.error('Proxy Error:', error);
-    res.status(500).send('Live Proxy Error: ' + error.message);
+    res.status(500).send('Live Proxy Error: ' + error.message + ' URL: ' + steamUrl);
   }
 }

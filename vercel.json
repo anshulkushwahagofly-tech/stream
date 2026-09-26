@@ -1,12 +1,8 @@
 {
   "rewrites": [
     {
-      "source": "/debug",
-      "destination": "/api/debug"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/api/proxy"
+      "source": "/:path*",
+      "destination": "/api/proxy?reqPath=:path*"
     }
   ]
 }
